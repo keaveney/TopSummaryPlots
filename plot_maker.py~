@@ -1,0 +1,13 @@
+#Function that takes dat file  and returns filled TH1F
+from ROOT import TH1F
+from array import *
+import numpy as np
+import histo_maker
+import histo_maker_fromROOT
+
+
+#h = histo_maker.make_histo("TOP_16_011.dat")
+h = histo_maker_fromROOT.make_histo("TOP_16_011.root")
+
+
+h.Draw()
