@@ -2,6 +2,7 @@
 from ROOT import TH1F, TGraphErrors, TCanvas, TLegend, gStyle, TF1, TVirtualFitter, TLine, TLatex, TMathText
 from array import *
 import numpy as np
+import read_theory
 import histo_maker
 import histo_maker_fromROOT
 import tdrstyle
@@ -35,9 +36,15 @@ gStyle.SetLegendFillColor(0);
 gStyle.SetLegendFont(42);
 gStyle.SetLegendTextSize(0.05);
 
+
+NNLO = 1
+
 if fromDAT == 1:
     print "making ratio from DAT file"
     list_x, list_y_data, list_y_data_unc, list_y_mc  = histo_maker.make_histo("TOP_16_011.dat")
+    if NNLO == 1:
+        list_y_mc  = read_theory.read_pred("NNLO_topPT_TOP_16_011.dat")
+    
     x = np.asarray(list_x)
     y_data = np.asarray(list_y_data)
     x_data_unc = np.zeros(len(list_x))

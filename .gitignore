@@ -1,0 +1,5 @@
+*.pyc
+*~
+*.root
+ConfidenceIntervals.C
+*.pdf
