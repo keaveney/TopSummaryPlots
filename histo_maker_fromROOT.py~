@@ -1,7 +1,0 @@
-from ROOT import *
-
-
-def make_histo(file):
-
-    f = TFile(file)
-
