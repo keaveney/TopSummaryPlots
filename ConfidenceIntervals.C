@@ -114,7 +114,9 @@ void ConfidenceIntervals()
   grint2->SetLineColor(kRed);
   grint2->Draw("E0 same");
   grint2->SetTitle("Fitted 2d function with .95 error bars");
-
+   
+  // canvas->Print(("ConfidenceInterval.png").Data(),"png");
+  myc->SaveAs("SampleFitPlots.png");
   myc->cd();
 
 }
