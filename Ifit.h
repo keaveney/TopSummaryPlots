@@ -2,6 +2,9 @@
 #include "TGraphErrors.h"
 #include "TGraph.h"
 #include "TGraph2D.h"
+#include "TLegend.h"
+#include "TLegendEntry.h"
+
 
 #include "TFile.h"
 #include "TH2D.h"
@@ -29,18 +32,20 @@ TGraphAsymmErrors * gr;
 TGraphAsymmErrors * gr_cl;
 TGraphAsymmErrors* g;
 
+TGraphAsymmErrors* g_temp;
+
+
 vector<string> yoda_files = {"TOP_16_011_DATA_NNLO.yoda","TOP_16_008_DATA_NNLO.yoda"};
-vector<TGraphAsymmErrors*> graphs;
+vector<TGraphAsymmErrors> graphs;
 
 
 const int nbins = 15;
 
-
+//global array needed for objective fitting function and
+//writing of covariance matrix
 Double_t x[nbins],y[nbins],errory[nbins];
-TVectorF vx(nbins), vy(nbins), vexl(nbins), vexh(nbins), veyl(nbins), veyh(nbins), clhi(nbins), cllo(nbins), line_y(nbins);
 
 double outpar[2], err[2];
-
 
 
 TFile * ff = new TFile("cov_file.root");
@@ -77,8 +82,25 @@ Double_t dummy_func(float x, double par1, double par2 )
 TGraphAsymmErrors * read_YODA(std::string yoda_file){
     std::cout <<"in read_YODA   "<<   yoda_file <<std::endl;
     
-    //vector<float> *vx, *vy, *vexl, *vexh, *veyl, *veyh;
-
+    int nbins = 0;
+    
+    if (yoda_file == "TOP_16_011_DATA_NNLO.yoda"){
+    nbins = 6;
+        
+    } else if(yoda_file == "TOP_16_008_DATA_NNLO.yoda"){
+    
+        nbins = 9;
+    }
+    
+    else if(yoda_file == "COMBINED_DATA_NNLO.yoda"){
+        
+        nbins = 15;
+        
+    }
+    
+    
+    TVectorF vx(nbins), vy(nbins), vexl(nbins), vexh(nbins), veyl(nbins), veyh(nbins), clhi(nbins), cllo(nbins), line_y(nbins);
+    
     vector<string> tokens;
     string line;
     ifstream myfile (yoda_file);
@@ -103,11 +125,11 @@ TGraphAsymmErrors * read_YODA(std::string yoda_file){
                 
                 vy[row] = stof(tokens[3]);
                 
-                //veyl[row] = stof(tokens[3])*0.02;
-                //veyh[row] = stof(tokens[3])*0.02;
+                veyl[row] = stof(tokens[3])*0.02;
+                veyh[row] = stof(tokens[3])*0.02;
                 
-               veyl[row] = stof(tokens[4]);
-                veyh[row] = stof(tokens[5]);
+                //veyl[row] = stof(tokens[4]);
+                //veyh[row] = stof(tokens[5]);
 
                 cout <<"VX = "<<  vx[row]  <<" VY "<<  vy[row] <<  " VEYL  " << veyl[row]  << " VEYH  " << veyh[row]<<endl;
 
@@ -116,16 +138,24 @@ TGraphAsymmErrors * read_YODA(std::string yoda_file){
             }
         }
         myfile.close();
+        cout <<"closed file"<<endl;
 
     }
     
     else cout << "Unable to open file";
     
-    for (int i = 0; i < nbins; i++) cout <<" X val =  "<< vx[i];
-    
-    gr = new TGraphAsymmErrors (vx, vy, vexl, vexh, veyl, veyh);
+    cout <<"here"<<endl;
 
-    gr->Write("Ratio");
+    
+   // for (int i = 0; i < nbins; i++) cout <<" X val =  "<< vx[i];
+    
+    gr = new TGraphAsymmErrors(vx, vy, vexl, vexh, veyl, veyh);
+    gr->SetName(yoda_file.c_str());
+    //gr->Write("Ratio");
+    
+    cout <<"made graph"<<endl;
+
+    
     return gr;
 }
 
@@ -147,7 +177,7 @@ void create_cov_matrix(){
     if(schmitt_fit == true){
          off_diag1 = 0.5;
          off_diag2 = 0.4;
-         off_diag3 = 0.3;
+         off_diag3 = 0.2;
     }else{
         off_diag1 = 0.0;
         off_diag2 = 0.0;
@@ -157,10 +187,7 @@ void create_cov_matrix(){
     for (int i = 0; i < nbins; i++){
         for (int j = 0; j < nbins; j++){
             //covariance = (vy[i] - veyl[i]) * (vy[j] - veyl[j]);
-            covariance = (veyl[i]) * (veyl[j]);
-            
-            cout <<" covanriance  = "<<veyl[i] <<  endl;
-            
+            covariance = (errory[i]) * (errory[j]);
             
             if (i ==j){
                mat[i][j] = 1.0 * covariance;
@@ -253,7 +280,10 @@ double dummy_fcn(Double_t intercept, Double_t slope)
 
 
 void draw_contour(int nPoints){
-    cout <<" drawing contour  "<< vx[0] <<endl;
+    
+    TVectorF vx(nbins), vy(nbins), vexl(nbins), vexh(nbins), veyl(nbins), veyh(nbins), clhi(nbins), cllo(nbins), line_y(nbins);
+
+    
     int scanp = nPoints*nPoints;
     
     TGraph2D *g2 = new TGraph2D(scanp);
@@ -261,9 +291,7 @@ void draw_contour(int nPoints){
     
     vector<pair<float, float>> cl_band_vals;
     std::pair <float,float> vals;
-
     
-    cout <<"out pars  HHH = = = "<<    outpar[0]    << "  "<< err[0] <<"  "<<  outpar[1]    << "  "<< err[1]  <<endl;
     double intercept = 0.0;
     double intercept_lo = (outpar[0] - (3*err[0]));
     double intercept_hi = (outpar[0] + (3*err[0]));
@@ -294,10 +322,10 @@ void draw_contour(int nPoints){
             
             running_chi2  = dummy_fcn(intercept,slope);
 
-            if ((running_chi2) < ((min_chi2) + 1.0 )){
+            if ((running_chi2) < ((min_chi2) + 9.0 )){
                 
-              //  cout <<" IN BAND!   "<< endl;
-              //  cout <<" MIN CHI2  =   "<<   min_chi2<< " running chi2  = = "<<  running_chi2  << " intercept =  "<< intercept<< " slope " <<slope<<endl;
+              // cout <<" IN BAND!   "<< endl;
+               // cout <<" MIN CHI2  =   "<<   min_chi2<< " running chi2  = = "<<  running_chi2  << " intercept =  "<< intercept<< " slope " <<slope<<endl;
                 
                 g2_cont->SetPoint(i, intercept, slope, 1.0);
                 
@@ -317,7 +345,9 @@ void draw_contour(int nPoints){
     double max_yval = -999.0;
     
     for (i = 0; i < nbins; i++){
-        line_y[i] =  dummy_func(vx[i], outpar[0], outpar[1]);
+        line_y[i] =  dummy_func(x[i], outpar[0], outpar[1]);
+        cout <<"Line X "<<  x[i]<<",  Line y  "<<  line_y[i] << endl;
+
     }
     
     //loop over graph points and estimate edges of CL band
@@ -328,12 +358,10 @@ void draw_contour(int nPoints){
         cout <<" Point  "<< i <<endl;
         for(int val = 0; val < cl_band_vals.size(); val++){
             
-
-        
-            running_yval = dummy_func(vx[i], cl_band_vals[val].first, cl_band_vals[val].second);
+            running_yval = dummy_func(x[i], cl_band_vals[val].first, cl_band_vals[val].second);
             
 
-          //  cout <<"CL band vals "<<  cl_band_vals[val].first << "   "<<  cl_band_vals[val].second << endl;
+           // cout <<"CL band vals "<<  cl_band_vals[val].first << "   "<<  cl_band_vals[val].second << endl;
           //  cout <<"Running yval = = = "<<  running_yval  << endl;
             
             if (running_yval > max_yval) max_yval = running_yval;
@@ -343,30 +371,68 @@ void draw_contour(int nPoints){
         clhi[i] = fabs(max_yval - line_y[i]) ;
         cllo[i] = fabs(max_yval - line_y[i]);
     
-    //    cout<<"   "<<endl;
-       cout <<"Max yval = = = "<<  max_yval  << endl;
-      cout<<"   "<<endl;
+    cout <<"Max yval = = = "<<  max_yval  << endl;
+    cout<<"   "<<endl;
         
     }
     
-    TCanvas * c4 = new TCanvas();
 
+    
+    for(int i = 0 ; i < nbins; i++){
+        vx[i] = x[i];
+        vy[i] = y[i];
+        vexl[i] = 0.0;
+        vexh[i] = 0.0;
+        veyl[i] = errory[i];
+        veyh[i] = errory[i];
+    }
+
+    
     gr_cl = new TGraphAsymmErrors (vx, line_y, vexl, vexh, cllo, clhi);
 
     
+    TCanvas * c4 = new TCanvas();
+
+  
+
     gr_cl->Draw("ALE3");
-    g->Draw("PSAME");
+    
+    vector<int> colors = {1,2};
+    
+ 
+    
     gr_cl->SetFillColor(kRed);
     gr_cl->SetFillStyle(3002);
     gr_cl->GetXaxis()->SetRangeUser(0.0,800.0);
-    gr_cl->GetYaxis()->SetRangeUser(0.6,1.4);
+    gr_cl->GetYaxis()->SetRangeUser(0.5,1.5);
     gr_cl->GetHistogram()->GetXaxis()->SetTitle("Top p_{T}");
     gr_cl->GetHistogram()->GetYaxis()->SetTitle("DATA/NNLO");
+    gr_cl->SetName("fit");
+    
+    
+    TLegend *leg = new TLegend(0.54,0.7,0.92,0.86);
+    // TLegend * leg = new  TLegend(0.1,0.7,0.48,0.9);
+    TLegendEntry* l1 = leg->AddEntry("TOP_16_011_NNLO_DATA.yoda" ,"dilepton","E1p");
+    l1->SetMarkerColor(1);
+    l1->SetLineColor(1);
+    TLegendEntry* l2 = leg->AddEntry("TOP_16_008_NNLO_DATA.yoda","lepton + jets","E1p");
+    l2->SetMarkerColor(2);
+    l2->SetLineColor(2);
+    TLegendEntry* l3 = leg->AddEntry("fit","Linear fit","lf");
+    leg->SetHeader("#bf{Parton level}");
+    leg->SetBorderSize(0.0);
+
+    leg->Draw();
+    
+    for (int i = 0 ; i < graphs.size(); i++){
+        graphs[i].SetMarkerColor(colors[i]);
+        graphs[i].SetLineColor(colors[i]);
+        graphs[i].Draw("PSAME");
+    }
+    
     
     c4->SaveAs("Gr_CL.png");
 
-
-    
     TCanvas * c3 = new TCanvas();
     g2->GetHistogram()->GetXaxis()->SetTitle("Intercept");
     g2->GetHistogram()->GetYaxis()->SetTitle("Slope");

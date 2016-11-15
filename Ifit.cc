@@ -11,12 +11,9 @@
 //    Root > minuit->mnhelp("SET") explains most parameters
 //Author: Rene Brun
 
-
 #include "Ifit.h"
-
 #include "TMinuit.h"
 #include "TBackCompFitter.h"
-
 
 using namespace std;
 
@@ -62,15 +59,77 @@ int Ifit()
 {
     setTDRStyle();
 
-    
   TFile * f = new TFile("fit.root", "RECREATE");
     
-    g = read_YODA("COMBINED_DATA_NNLO.yoda");
+    for (int file = 0; file < yoda_files.size(); file++){
+        g_temp = read_YODA(yoda_files[file]);
+        graphs.push_back(*g_temp);
+    }
     
+    cout <<"got  " << graphs.size() <<" graphs"<<endl;
+
     
-  // extract info from graph and fill arrays
+    int comb_itr = 0;
+    double comb_x, comb_y, comb_ex, comb_ey;
+    g = new TGraphAsymmErrors(15);
+    
+    //make combined graph
+    for(int graph = 0; graph < graphs.size(); graph++){
+
+        int npoints_g = graphs[graph].GetN();
+        
+        cout <<"graph loop, npoints "<<  graphs[0].GetN() <<   "  , "  <<  graphs[1].GetN()  <<endl;
+        cout <<" "<<endl;
+
+        for(int p = 0; p < npoints_g; p++){
+            cout <<"point loop,  g "<<  graph  << ",  p "<< p <<", comb itr = "<<comb_itr <<endl;
+
+            graphs[graph].GetPoint(p, comb_x, comb_y);
+            cout <<" here1"<<endl;
+
+            comb_ex = graphs[graph].GetErrorXhigh(p);
+            cout <<" here2"<<endl;
+
+            comb_ey = graphs[graph].GetErrorYhigh(p);
+            
+            cout <<" here3"<<endl;
+
+            g->SetPoint(comb_itr, comb_x, comb_y);
+            
+            cout <<" here4"<<endl;
+
+            g->SetPointEXlow(comb_itr, comb_ex);
+            
+            cout <<" here5"<<endl;
+
+            g->SetPointEXhigh(comb_itr, comb_ex);
+            
+            cout <<" here6"<<endl;
+
+            g->SetPointEYlow(comb_itr, comb_ey);
+            
+            cout <<" here7"<<endl;
+
+            g->SetPointEYhigh(comb_itr, comb_ey);
+            cout <<" here8"<<endl;
+
+            
+            comb_itr++;
+
+
+        }
+    }
+
+     cout <<"COMBINED NUMBER OF POINTS =  "<< comb_itr <<endl;
+
+  //  g = read_YODA("COMBINED_DATA_NNLO.yoda");
+    
+  // extract info from graph and fill global arrays
   for (int i =0; i < nbins; i++){
     g->GetPoint(i,x[i],y[i]);
+      cout <<"ORDER  OF POINTS =  "<<x[i] <<"  "<< y[i]<<endl;
+
+      
     errory[i] = g->GetErrorYhigh(i);
     }
     
