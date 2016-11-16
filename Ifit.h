@@ -4,6 +4,7 @@
 #include "TGraph2D.h"
 #include "TLegend.h"
 #include "TLegendEntry.h"
+#include "TLine.h"
 
 
 #include "TFile.h"
@@ -17,6 +18,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <math.h>       /* exp */
+
 
 #include <iostream>
 #include <string>
@@ -34,10 +37,16 @@ TGraphAsymmErrors* g;
 
 TGraphAsymmErrors* g_temp;
 
+TF1 *f_nom1;
+
+Double_t res;
+Double_t f;
 
 vector<string> yoda_files = {"TOP_16_011_DATA_NNLO.yoda","TOP_16_008_DATA_NNLO.yoda"};
 vector<TGraphAsymmErrors> graphs;
 
+
+string fit = "exp";
 
 const int nbins = 15;
 
@@ -62,7 +71,18 @@ Double_t func(float x,Double_t *par)
 {
     // Double_t value=( (par[0]*par[0])/(x*x)-1)/ ( par[1]+par[2]*y-par[3]*y*y);
     
-    Double_t value= par[0] + par[1]*x;
+    //Double_t value= par[0] + par[1]*x;
+    Double_t value;
+    
+    if (fit == "linear"){
+        
+        value= par[0] + par[1]*x;
+        
+    }else if(fit == "exp"){
+        
+        value = exp(par[0] + par[1]*x);
+        
+    }
     return value;
 }
 
@@ -72,10 +92,24 @@ Double_t dummy_func(float x, double par1, double par2 )
     // Double_t value=( (par[0]*par[0])/(x*x)-1)/ ( par[1]+par[2]*y-par[3]*y*y);
     
    // Double_t value= par[0] + par[1]*x;
-    Double_t value= par1 + par2*x;
+//Double_t value= par1 + par2*x;
+    
+    Double_t value;
+
+    if (fit == "linear"){
+        
+        value= par1 + par2*x;
+        
+    }else if(fit == "exp"){
+        
+        value = exp(par1 + par2*x);
+        
+    }
+    
+    
+
     return value;
 }
-
 
 
 
@@ -125,11 +159,11 @@ TGraphAsymmErrors * read_YODA(std::string yoda_file){
                 
                 vy[row] = stof(tokens[3]);
                 
-                veyl[row] = stof(tokens[3])*0.02;
-                veyh[row] = stof(tokens[3])*0.02;
+                //veyl[row] = stof(tokens[3])*0.02;
+                //veyh[row] = stof(tokens[3])*0.02;
                 
-                //veyl[row] = stof(tokens[4]);
-                //veyh[row] = stof(tokens[5]);
+                veyl[row] = stof(tokens[4]);
+                veyh[row] = stof(tokens[5]);
 
                 cout <<"VX = "<<  vx[row]  <<" VY "<<  vy[row] <<  " VEYL  " << veyl[row]  << " VEYH  " << veyh[row]<<endl;
 
@@ -175,9 +209,9 @@ void create_cov_matrix(){
     double off_diag3;
     
     if(schmitt_fit == true){
-         off_diag1 = 0.5;
-         off_diag2 = 0.4;
-         off_diag3 = 0.2;
+         off_diag1 = 0.3;
+         off_diag2 = 0.2;
+         off_diag3 = 0.0;
     }else{
         off_diag1 = 0.0;
         off_diag2 = 0.0;
@@ -242,7 +276,7 @@ void create_cov_matrix(){
 
 
 
-double dummy_fcn(Double_t intercept, Double_t slope)
+double dummy_fcn(Double_t  intercept, Double_t slope)
 {
     
     Int_t i, j;
@@ -322,7 +356,7 @@ void draw_contour(int nPoints){
             
             running_chi2  = dummy_fcn(intercept,slope);
 
-            if ((running_chi2) < ((min_chi2) + 9.0 )){
+            if ((running_chi2) < ((min_chi2) + 1.0 )){
                 
               // cout <<" IN BAND!   "<< endl;
                // cout <<" MIN CHI2  =   "<<   min_chi2<< " running chi2  = = "<<  running_chi2  << " intercept =  "<< intercept<< " slope " <<slope<<endl;
@@ -360,7 +394,6 @@ void draw_contour(int nPoints){
             
             running_yval = dummy_func(x[i], cl_band_vals[val].first, cl_band_vals[val].second);
             
-
            // cout <<"CL band vals "<<  cl_band_vals[val].first << "   "<<  cl_band_vals[val].second << endl;
           //  cout <<"Running yval = = = "<<  running_yval  << endl;
             
@@ -375,8 +408,6 @@ void draw_contour(int nPoints){
     cout<<"   "<<endl;
         
     }
-    
-
     
     for(int i = 0 ; i < nbins; i++){
         vx[i] = x[i];
@@ -393,31 +424,41 @@ void draw_contour(int nPoints){
     
     TCanvas * c4 = new TCanvas();
 
-  
-
-    gr_cl->Draw("ALE3");
+    gr_cl->Draw("AE3");
     
-    vector<int> colors = {1,2};
+    vector<int> colors = {2,4};
+    vector<int> styles = {22,23};
     
- 
-    
-    gr_cl->SetFillColor(kRed);
+    gr_cl->SetFillColor(kBlack);
     gr_cl->SetFillStyle(3002);
     gr_cl->GetXaxis()->SetRangeUser(0.0,800.0);
     gr_cl->GetYaxis()->SetRangeUser(0.5,1.5);
     gr_cl->GetHistogram()->GetXaxis()->SetTitle("Top p_{T}");
     gr_cl->GetHistogram()->GetYaxis()->SetTitle("DATA/NNLO");
     gr_cl->SetName("fit");
+
+    if(fit== "exp"){
+        f_nom1 = new TF1("f_nom1","exp([0] + (x*[1]))",0.0,800.0);
     
+    } else if (fit == "linear"){
+        f_nom1 = new TF1("f_nom1","[0] + (x*[1])",0.0,800.0);
+    }
+    
+    f_nom1->SetParameters(outpar);
+    f_nom1->SetLineColor(1);
+    f_nom1->Draw("same");
+
     
     TLegend *leg = new TLegend(0.54,0.7,0.92,0.86);
     // TLegend * leg = new  TLegend(0.1,0.7,0.48,0.9);
     TLegendEntry* l1 = leg->AddEntry("TOP_16_011_NNLO_DATA.yoda" ,"dilepton","E1p");
-    l1->SetMarkerColor(1);
-    l1->SetLineColor(1);
+    l1->SetMarkerColor(2);
+    l1->SetMarkerStyle(22);
+    l1->SetLineColor(2);
     TLegendEntry* l2 = leg->AddEntry("TOP_16_008_NNLO_DATA.yoda","lepton + jets","E1p");
-    l2->SetMarkerColor(2);
-    l2->SetLineColor(2);
+    l2->SetMarkerColor(4);
+    l2->SetMarkerStyle(23);
+    l2->SetLineColor(4);
     TLegendEntry* l3 = leg->AddEntry("fit","Linear fit","lf");
     leg->SetHeader("#bf{Parton level}");
     leg->SetBorderSize(0.0);
@@ -426,9 +467,17 @@ void draw_contour(int nPoints){
     
     for (int i = 0 ; i < graphs.size(); i++){
         graphs[i].SetMarkerColor(colors[i]);
+        graphs[i].SetMarkerStyle(styles[i]);
         graphs[i].SetLineColor(colors[i]);
         graphs[i].Draw("PSAME");
     }
+    
+    
+//    string results_string = "r = " + str(p2*100) + "\cdot({P_{T}\\over100\;GeV}) + "+ str(p1)
+//    l = TMathText()
+//    l.SetTextAlign(23)
+//    l.SetTextSize(0.04)
+//    l.DrawMathText(250.0, 0.6, fit_string);
     
     
     c4->SaveAs("Gr_CL.png");
@@ -439,6 +488,55 @@ void draw_contour(int nPoints){
     g2->Draw("COLZ");
     g2_cont->Draw("BOXSAME");
     g2_cont->SetMarkerStyle(2);
+    
+    double x1_intercept_lo,  x2_intercept_lo, y1_intercept_lo,  y2_intercept_lo;
+    double x1_intercept_hi,  x2_intercept_hi, y1_intercept_hi,  y2_intercept_hi;
+    double x1_slope_lo,  x2_slope_lo, y1_slope_lo,  y2_slope_lo;
+    double x1_slope_hi,  x2_slope_hi, y1_slope_hi,  y2_slope_hi;
+
+    
+    x1_intercept_lo = outpar[0] - (err[0]);
+    x2_intercept_lo = outpar[0] - (err[0]);
+    y1_intercept_lo = outpar[1] - (err[1]);
+    y2_intercept_lo = outpar[1] + (err[1]);
+    
+    x1_intercept_hi = outpar[0] + (err[0]);
+    x2_intercept_hi = outpar[0] + (err[0]);
+    y1_intercept_hi = outpar[1] - (err[1]);
+    y2_intercept_hi = outpar[1] + (err[1]);
+    
+    x1_slope_lo = outpar[0] - (err[0]);
+    x2_slope_lo = outpar[0] + (err[0]);
+    y1_slope_lo = outpar[1] - (err[1]);
+    y2_slope_lo = outpar[1] - (err[1]);
+    
+    x1_slope_hi = outpar[0] - (err[0]);
+    x2_slope_hi = outpar[0] + (err[0]);
+    y1_slope_hi = outpar[1] + (err[1]);
+    y2_slope_hi = outpar[1] + (err[1]);
+
+    
+    TLine * l_intercept_lo = new TLine(x1_intercept_lo,y1_intercept_lo,x2_intercept_lo,y2_intercept_lo);
+    l_intercept_lo->SetLineStyle(2);
+    l_intercept_lo->SetLineColor(2);
+    l_intercept_lo->Draw();
+    
+    TLine * l_intercept_hi = new TLine(x1_intercept_hi,y1_intercept_hi,x2_intercept_hi,y2_intercept_hi);
+    l_intercept_hi->SetLineStyle(2);
+    l_intercept_hi->SetLineColor(2);
+    l_intercept_hi->Draw();
+    
+    
+    TLine * l_slope_lo = new TLine(x1_slope_lo,y1_slope_lo,x2_slope_lo,y2_slope_lo);
+    l_slope_lo->SetLineStyle(2);
+    l_slope_lo->SetLineColor(2);
+    l_slope_lo->Draw();
+    
+    TLine * l_slope_hi = new TLine(x1_slope_hi,y1_slope_hi,x2_slope_hi,y2_slope_hi);
+    l_slope_hi->SetLineStyle(2);
+    l_slope_hi->SetLineColor(2);
+    l_slope_hi->Draw();
+ 
     c3->Write();
     c3->SaveAs("contour.png");
 

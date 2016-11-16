@@ -128,8 +128,6 @@ int Ifit()
   for (int i =0; i < nbins; i++){
     g->GetPoint(i,x[i],y[i]);
       cout <<"ORDER  OF POINTS =  "<<x[i] <<"  "<< y[i]<<endl;
-
-      
     errory[i] = g->GetErrorYhigh(i);
     }
     
@@ -146,7 +144,6 @@ int Ifit()
   // minimize
   arglist[0] = 100; // number of function calls
   arglist[1] = 1.0; // tolerance
-
     
   TF1 *f_nom = new TF1("f_nom","[0] + [1]*x",0.0,800.0);
     
@@ -160,13 +157,10 @@ int Ifit()
        minuit->PrintResults(1,1.0);
        minuit->GetStats(chi2,edm,errdef,nvpar,nparx);
 
-      
       for (int i=0; i<2; i++){
           gMinuit->GetParameter(i,outpar[i],err[i]);
       }
       
-      cout <<"out pars  CCC = = = "<<    outpar[0]    << "  "<< err[0] <<"  "<<  outpar[1]    << "  "<< err[1]  <<endl;
-
    f_nom->SetParameters(outpar);
    g->SetMarkerStyle(23);
    g->Draw("APE1");
@@ -208,7 +202,6 @@ int Ifit()
 
    grint->Draw("E3same");
     }
-    
     
     draw_contour(100);
 
