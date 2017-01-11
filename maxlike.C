@@ -17,18 +17,23 @@
 
 #include "TMinuit.h"
 // global variables
-const Int_t Npoints = 2000;
+const Int_t Npoints = 20000;
 Double_t xp[Npoints];
 Double_t xmin = -0.95;
 Double_t xmax = +0.95;
-Double_t alpha = 0.5; 
-Double_t beta  = 0.5;
+Double_t alpha = 1.0;
+Double_t beta  = 7.0;
 //______________________________________________________________________________
 Double_t fgen(Double_t x)
 {
   // function normalized in the interval -1,1
 
-  Double_t value = (1.0 + alpha*x + beta*x*x)/(2.0 + 2.0*beta/3.0);
+//    Double_t value = (1.0 + alpha*x + beta*x*x);
+  
+    Double_t value = ( alpha*x + beta*x*x);
+
+    
+  //Double_t value = (1.0 + alpha*x + beta*x*x)/(2.0 + 2.0*beta/3.0);
   return value;
 }
 //______________________________________________________________________________
@@ -38,15 +43,32 @@ Double_t func(Double_t x,Double_t *par)
   Double_t xmin3 = TMath::Power(xmin,3);
   Double_t xmax2 = TMath::Power(xmax,2);
   Double_t xmax3 = TMath::Power(xmax,3);
-  Double_t value = (1.0 + par[0]*x + par[1]*x*x)/ 
-    ((xmax-xmin) + par[0]*(xmax2-xmin2)/2.0 + par[1]*(xmax3-xmin3)/3.0);
+  //Double_t value = (1.0 + par[0]*x + par[1]*x*x)/ ((xmax-xmin) + par[0]*(xmax2-xmin2)/2.0 + par[1]*(xmax3-xmin3)/3.0);
+ // Double_t value = (1.0 + par[0]*x + par[1]*x*x)/ ((xmax-xmin) + par[0]*(xmax2-xmin2)/2.0 + par[1]*(xmax3-xmin3)/3.0);
+
+    Double_t value  = par[0]*x +  par[1]*x*x ;
+   // Double_t value = x*x;
   return value;
 }
 //______________________________________________________________________________
 void fcn(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag)
 {
-  // f is the function that MINUIT really minimizes (so define it with - in front
-  // to maximize
+  // f is the function that MINUIT really minimizes (so define it with - in front to maximize
+    
+    Int_t i;
+    Double_t logl = 0;
+    Double_t temp;
+    for (i=0; i<Npoints;i++) {
+    
+    temp = func(xp[i],par);
+    logl *= temp;
+    
+    }
+    logl  = TMath::Log(logl);
+    f = -logl;
+    
+    
+    /*
   Int_t i;
   Double_t logl = 0;
   Double_t temp;
@@ -55,6 +77,8 @@ void fcn(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag)
     logl += temp;
   }
   f = -logl;
+     */
+     
 }
 
 //______________________________________________________________________________
@@ -64,20 +88,25 @@ void maxlike()
   r3->SetSeed(0);
   // generate the fake data using the Von Neumann's acceptance-rejection method
   Int_t naccept=0;
-  while  (naccept < Npoints)
-    { 
-      // x goes from -1 to +1
-      Double_t x = 2.0*(r3->Rndm())-1.0;
-      // y goes from 0 to fgen(1) (for alpha,beta >0)
-      Double_t y = fgen(1)*(r3->Rndm());
-      if (y<=fgen(x)) {
-	// accept the point if between xmax and xmin
-        if ((x<xmax) && (x>xmin)){
-	  xp[naccept]=x;
-	  naccept++;
-	}
-      }
+    
+    while  (naccept < Npoints)
+    {
+        Double_t x = 2.0*(r3->Rndm())-1.0;
+        
+        // y goes from 0 to fgen(1) (for alpha,beta >0)
+        Double_t y = fgen(1)*(r3->Rndm());
+        
+        if (y<=fgen(x)) {
+            // accept the point if between xmax and xmin
+            if ((x<xmax) && (x>xmin)){
+                xp[naccept]=x;
+                naccept++;
+                cout <<" x "<< x << endl;
+            }
+        }
     }
+    
+    
 
   // show histogram
   TCanvas *fake = new TCanvas("fake"," Hist  ", 600,600);
@@ -99,8 +128,8 @@ void maxlike()
   gMinuit->mnexcm("SET ERR", arglist ,1,ierflg);
 
   // Set starting values and step sizes for parameters
-  static Double_t vstart[2] = {1.,1.,};
-  static Double_t step[2] = {0.001 , 0.001};
+  static Double_t vstart[2] = {1.3,6.5};
+  static Double_t step[2] = {0.1 , 0.1};
   gMinuit->mnparm(0, "alpha", vstart[0], step[0], 0,0,ierflg);
   gMinuit->mnparm(1, "beta",  vstart[1], step[1], 0,0,ierflg);
 
@@ -117,6 +146,7 @@ void maxlike()
    
   //now make the contours (taken from fitcont.C)
 
+    /*
   TCanvas *c2 = new TCanvas("c2","contours",10,10,600,600);
   //Get contour for parameter 0 versus parameter 1  for ERRDEF=2 
   gMinuit->SetErrorDef(2);
@@ -145,5 +175,6 @@ void maxlike()
   estP->SetMarkerSize(2);
   estP->Draw();
 
+     */
 
 }

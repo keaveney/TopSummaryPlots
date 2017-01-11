@@ -57,16 +57,24 @@ void fcn(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag)
 //______________________________________________________________________________
 int Ifit()
 {
+    
     setTDRStyle();
 
-  TFile * f = new TFile("fit.root", "RECREATE");
+    writeExtraText = true;       // if extra text
+    extraText  = "Preliminary";  // default extra text is "Preliminary"
+    lumi_8TeV  = "19.1 fb^{-1}"; // default is "19.7 fb^{-1}"
+    lumi_7TeV  = "4.9 fb^{-1}";  // default is "5.1 fb^{-1}"
+    lumi_sqrtS = "2.2-2.3 fb^{-1} (13 TeV)";       // used with iPeriod = 0, e.g. for simulation-only plots (default is an empty string)
+    
+    
+
+   TFile * f = new TFile("fit.root", "RECREATE");
     
     for (int file = 0; file < yoda_files.size(); file++){
         g_temp = read_YODA(yoda_files[file]);
         graphs.push_back(*g_temp);
     }
     
-    cout <<"got  " << graphs.size() <<" graphs"<<endl;
 
     
     int comb_itr = 0;
@@ -77,57 +85,25 @@ int Ifit()
     for(int graph = 0; graph < graphs.size(); graph++){
 
         int npoints_g = graphs[graph].GetN();
-        
-        cout <<"graph loop, npoints "<<  graphs[0].GetN() <<   "  , "  <<  graphs[1].GetN()  <<endl;
-        cout <<" "<<endl;
-
         for(int p = 0; p < npoints_g; p++){
-            cout <<"point loop,  g "<<  graph  << ",  p "<< p <<", comb itr = "<<comb_itr <<endl;
 
             graphs[graph].GetPoint(p, comb_x, comb_y);
-            cout <<" here1"<<endl;
-
             comb_ex = graphs[graph].GetErrorXhigh(p);
-            cout <<" here2"<<endl;
-
             comb_ey = graphs[graph].GetErrorYhigh(p);
-            
-            cout <<" here3"<<endl;
-
             g->SetPoint(comb_itr, comb_x, comb_y);
-            
-            cout <<" here4"<<endl;
-
             g->SetPointEXlow(comb_itr, comb_ex);
-            
-            cout <<" here5"<<endl;
-
             g->SetPointEXhigh(comb_itr, comb_ex);
-            
-            cout <<" here6"<<endl;
-
             g->SetPointEYlow(comb_itr, comb_ey);
-            
-            cout <<" here7"<<endl;
-
             g->SetPointEYhigh(comb_itr, comb_ey);
-            cout <<" here8"<<endl;
-
-            
             comb_itr++;
-
-
         }
     }
-
-     cout <<"COMBINED NUMBER OF POINTS =  "<< comb_itr <<endl;
 
   //  g = read_YODA("COMBINED_DATA_NNLO.yoda");
     
   // extract info from graph and fill global arrays
   for (int i =0; i < nbins; i++){
     g->GetPoint(i,x[i],y[i]);
-      cout <<"ORDER  OF POINTS =  "<<x[i] <<"  "<< y[i]<<endl;
     errory[i] = g->GetErrorYhigh(i);
     }
     
